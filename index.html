@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>index</title>
+</head>
+
+<body>
+    <style>
+        body {
+            background-color: rgba(0, 0, 0, 0.493);
+        }
+        
+        #canvas {
+            position: absolute;
+            left: 300px;
+            width: 400px;
+            height: 400px;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn_container {
+            position: absolute;
+            left: 160px;
+        }
+        
+        .btn_style {
+            margin: 5px 0;
+            width: 120px;
+            height: 30px;
+            background-color: rgb(67, 94, 85);
+            text-align: center;
+            line-height: 30px;
+            -webkit-user-select: none;
+            cursor: pointer;
+        }
+        
+        .btn_style:hover {
+            background-color: rgb(76, 151, 126);
+        }
+        
+        .selected {
+            background-color: rgb(76, 151, 126);
+        }
+    </style>
+
+
+    <canvas id="canvas" width="400" height="400"></canvas>
+    <div class="btn_container">
+        <div id="btn_brush" class="btn_style selected">画笔</div>
+        <div id="btn_eraser" class="btn_style">橡皮</div>
+        <div id="btn_undo" class="btn_style">后退</div>
+        <div id="btn_redo" class="btn_style">前进</div>
+    </div>
+
+
+
+    <script src="./draw.js"></script>
+    <script>
+        var $ = (selector) => {
+            return document.querySelector(selector);
+        };
+
+        var canvas = $("#canvas");
+        var drawer = Drawer.new(canvas, "brush");
+
+        function info(e) {
+            const touches = e.changedTouches;
+            let a = touches[0];
+            let x = a.clientX - canvas.offsetLeft;
+            let y = a.clientY - canvas.offsetTop;
+            let force = a.force;
+            return {
+                x,
+                y,
+                force
+            };
+        }
+        var touched = false;
+        canvas.addEventListener("touchstart", function(e) {
+            let i = info(e);
+            drawer.start(i.x, i.y, i.force);
+            touched = true;
+        }, false);
+        canvas.addEventListener("touchend", function(e) {
+            let i = info(e);
+            drawer.end(i.x, i.y, i.force);
+            touched = false;
+        }, false)
+        canvas.addEventListener("touchmove", function(e) {
+            e.preventDefault();
+            if (touched) {
+                let i = info(e);
+                drawer.move(i.x, i.y, i.force);
+            }
+        }, false)
+        $("#btn_brush").addEventListener("click", function() {
+            $("#btn_brush").setAttribute("class", "btn_style selected");
+            $("#btn_eraser").setAttribute("class", "btn_style");
+            drawer.type = "brush";
+        });
+        $("#btn_eraser").addEventListener("click", function() {
+            $("#btn_brush").setAttribute("class", "btn_style");
+            $("#btn_eraser").setAttribute("class", "btn_style selected");
+            drawer.type = "eraser";
+        });
+        $("#btn_undo").addEventListener("click", function() {
+            if (drawer.canUndo()) {
+                drawer.undo();
+            }
+        });
+        $("#btn_redo").addEventListener("click", function() {
+            if (drawer.canRedo()) {
+                drawer.redo();
+            }
+        });
+    </script>
+</body>
+
+</html>
