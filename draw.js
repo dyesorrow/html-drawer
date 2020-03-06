@@ -20,7 +20,9 @@ var Backuper = {
         return this.pointer > 0;
     },
     canRedo: function() {
-        return this.pointer < this.length - 2;
+        console.log(this.pointer + ", " + this.list.length);
+
+        return this.pointer < this.list.length - 1;
     },
     undo: function() {
         if (!this.canUndo()) {
@@ -51,6 +53,7 @@ var Drawer = {
         obj.type = type;
         obj.canvas = canvas;
         obj.context = canvas.getContext("2d");
+        obj.backup();
         return obj;
     },
     backup: function() {
@@ -69,6 +72,7 @@ var Drawer = {
     },
     redo: function() {
         if (this.backuper.canRedo()) {
+            console.log("redo");
             this.context.putImageData(this.backuper.redo(), 0, 0);
         }
     },

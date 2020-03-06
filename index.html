@@ -107,14 +107,10 @@
             drawer.type = "eraser";
         });
         $("#btn_undo").addEventListener("click", function() {
-            if (drawer.canUndo()) {
-                drawer.undo();
-            }
+            drawer.undo();
         });
         $("#btn_redo").addEventListener("click", function() {
-            if (drawer.canRedo()) {
-                drawer.redo();
-            }
+            drawer.redo();
         });
     </script>
 </body>
