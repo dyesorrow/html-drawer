@@ -1,8 +1,15 @@
 import Drawer from "./drawer";
 
 console.log("init index...");
-const $ = (selector: string) => {
-    return document.querySelector(selector);
+
+const $ = (selector: string, each?: (e: Element) => void) => {
+    if (each) {
+        document.querySelectorAll(selector).forEach(e => {
+            each(e);
+        })
+    } else {
+        return document.querySelector(selector);
+    }
 };
 const drawer = new Drawer(<HTMLCanvasElement>$("#canvas"));
 
@@ -11,7 +18,7 @@ $("#btn_brush").addEventListener("click", function () {
     $("#btn_brush").setAttribute("class", "btn_style selected");
     $("#btn_eraser").setAttribute("class", "btn_style");
     drawer.type = "brush";
-    $("#pen_width").innerHTML = drawer.penWidth + "";
+    $("#pen_width").innerHTML = drawer.brushWidth + "";
 });
 $("#btn_eraser").addEventListener("click", function () {
     $("#btn_brush").setAttribute("class", "btn_style");
@@ -27,9 +34,9 @@ $("#btn_redo").addEventListener("click", function () {
 });
 
 $("#btn_a").addEventListener("click", function () {
-    if (drawer.type == "brush" && drawer.penWidth < 100) {
-        drawer.penWidth += 4;
-        $("#pen_width").innerHTML = drawer.penWidth + "";
+    if (drawer.type == "brush" && drawer.brushWidth < 100) {
+        drawer.brushWidth += 4;
+        $("#pen_width").innerHTML = drawer.brushWidth + "";
     }
     if (drawer.type == "eraser" && drawer.eraserWidth < 100) {
         drawer.eraserWidth += 4;
@@ -39,16 +46,16 @@ $("#btn_a").addEventListener("click", function () {
 
 });
 $("#btn_b").addEventListener("click", function () {
-    if (drawer.type == "brush" && drawer.penWidth > 4) {
-        drawer.penWidth -= 4;
-        $("#pen_width").innerHTML = drawer.penWidth + "";
+    if (drawer.type == "brush" && drawer.brushWidth > 4) {
+        drawer.brushWidth -= 4;
+        $("#pen_width").innerHTML = drawer.brushWidth + "";
     }
     if (drawer.type == "eraser" && drawer.eraserWidth > 4) {
         drawer.eraserWidth -= 4;
         $("#pen_width").innerHTML = drawer.eraserWidth + "";
     }
 });
-$("#pen_width").innerHTML = drawer.penWidth + "";
+$("#pen_width").innerHTML = drawer.brushWidth + "";
 
 function initColorBtn() {
     $("#btn_red").setAttribute("class", "btn_style");
@@ -75,6 +82,50 @@ initColorBtn();
 $("#btn_red").setAttribute("class", "btn_style color_btn_selected");
 
 
-
+function remove<T>(list: T[], e: T) {
+    let newList:T[] = [];
+    for (let index = 0; index < list.length; index++) {
+        if(list[index] != e){
+            newList.push(list[index]);
+        }
+    }
+    return newList;
+}
+$("input", e => {
+    e.addEventListener("click", function (this: HTMLInputElement) {
+        console.log();
+        if (this.checked) {
+            switch (this.value) {
+                case "1":
+                    if (drawer.enableTool.indexOf("mouse") == -1) {
+                        drawer.enableTool.push("mouse")
+                    }
+                    break;
+                case "2":
+                    if (drawer.enableTool.indexOf("finger") == -1) {
+                        drawer.enableTool.push("finger")
+                    }
+                    break;
+                case "3":
+                    if (drawer.enableTool.indexOf("pen") == -1) {
+                        drawer.enableTool.push("pen")
+                    }
+                    break;
+            }
+        } else {
+            switch (this.value) {
+                case "1":
+                    drawer.enableTool = remove(drawer.enableTool, "mouse")
+                    break;
+                case "2":
+                    drawer.enableTool = remove(drawer.enableTool, "finger")
+                    break;
+                case "3":
+                    drawer.enableTool = remove(drawer.enableTool, "pen")
+                    break;
+            }
+        }
+    });
+});
 
 console.log("finish init index! ");

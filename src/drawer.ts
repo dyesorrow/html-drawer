@@ -13,7 +13,7 @@ export default class Drawer {
     
     public  type: DrawType;
     public  enableTool: DrawTool[];
-    public  penWidth = 4;
+    public  brushWidth = 4;
     public  eraserWidth = 10;
     public  color = "#FF5733";
 
@@ -175,7 +175,7 @@ export default class Drawer {
         if (this.type == "brush") {
             return new Promise(() => {
                 this.context.beginPath();
-                this.context.lineWidth = force * this.penWidth;
+                this.context.lineWidth = force * this.brushWidth;
                 this.context.lineCap = "round"; // butt(默认)，没有线帽； round半圆形线帽(直径lineWidth)； square矩形线帽，以矩形绘制线段两端的线帽，两侧扩展的宽度各等于线条宽度的一半。
                 this.context.strokeStyle = this.color;
                 this.context.moveTo(sx, sy);

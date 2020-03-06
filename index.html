@@ -49,21 +49,24 @@
     </style>
 
 
-    <canvas id="canvas" width="800" height="400"></canvas>
+    <canvas id="canvas" width="800" height="500"></canvas>
     <div class="btn_container">
         <div id="btn_brush" class="btn_style selected">画笔</div>
         <div id="btn_eraser" class="btn_style">橡皮</div>
         <div id="btn_undo" class="btn_style">后退</div>
         <div id="btn_redo" class="btn_style">前进</div>
         <div>画笔or橡皮大小：</div>
-        <div id="pen_width"></div>
+        <div id="pen_width">4</div>
         <div id="btn_a" class="btn_style">+</div>
         <div id="btn_b" class="btn_style">-</div>
         <div>画笔颜色：</div>
         <div id="btn_red" class="btn_style" style="background-color: #FF5733;">red</div>
         <div id="btn_green" class="btn_style" style="background-color: #347834;">green</div>
         <div id="btn_yellow" class="btn_style" style="background-color: #F8F106;">yellow</div>
-
+        <div>控制：</div>
+        <div><input type="checkbox" name="category" value="1" checked="true" />鼠标</div>
+        <div><input type="checkbox" name="category" value="2" checked="true" />手指</div>
+        <div><input type="checkbox" name="category" value="3" checked="true" />触控笔</div>
     </div>
 
     <script src="./libs/require.js" data-main="dist/index"></script>
