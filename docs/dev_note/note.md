@@ -27,3 +27,16 @@ sAngle|起始角，以弧度计（弧的圆形的三点钟位置是 0 度）。
 eAngle|结束角，以弧度计。
 counterclockwise|可选。规定应该逆时针还是顺时针绘图。False = 顺时针，true = 逆时针。
 ![](https://www.runoob.com/wp-content/uploads/2013/11/img_arc.gif)
+
+```
+var buttonsPressed = instanceOfMouseEvent.buttons
+Return value
+A number representing one or more buttons. For more than one button pressed simultaneously, the values are combined (e.g., 3 is primary + secondary).
+
+0 : No button or un-initialized
+1 : Primary button (usually the left button)
+2 : Secondary button (usually the right button)
+4 : Auxilary button (usually the mouse wheel button or middle button)
+8 : 4th button (typically the "Browser Back" button)
+16 : 5th button (typically the "Browser Forward" button)
+```

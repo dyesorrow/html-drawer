@@ -12,18 +12,18 @@
         body {
             background-color: rgba(0, 0, 0, 0.493);
         }
-        
+
         #canvas {
             position: absolute;
             left: 300px;
             background-color: rgba(0, 0, 0, 0.4);
         }
-        
+
         .btn_container {
             position: absolute;
             left: 160px;
         }
-        
+
         .btn_style {
             margin: 5px 0;
             width: 120px;
@@ -34,11 +34,11 @@
             -webkit-user-select: none;
             cursor: pointer;
         }
-        
+
         .btn_style:hover {
             background-color: rgb(76, 151, 126);
         }
-        
+
         .selected {
             background-color: rgb(76, 151, 126);
         }
@@ -53,8 +53,7 @@
         <div id="btn_redo" class="btn_style">前进</div>
     </div>
 
-    <script src="./libs/require.js"></script>
-    <source src="./dist/index.js" type="">
+    <script src="./libs/require.js" data-main="dist/index"></script>
     <!-- <script>
         require(["dist/index"]);
     </script> -->

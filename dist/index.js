@@ -9,6 +9,7 @@ define("backup.buffer", ["require", "exports"], function (require, exports) {
             this.list = [];
             this.pointer = -1;
             this.capacity = capacity;
+            console.log("finished init backup buffer! ");
         }
         save(e) {
             if (this.pointer + 1 == this.capacity) {
@@ -46,13 +47,17 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
     Object.defineProperty(exports, "__esModule", { value: true });
     backup_buffer_1 = __importDefault(backup_buffer_1);
     class Drawer {
-        constructor(canvas, backCapacity = 100) {
+        constructor(canvas, type = "brush", backCapacity = 100) {
             this.x = 0;
             this.y = 0;
+            this.cancelOnce = false;
             this.canvas = canvas;
+            this.type = type;
             this.context = canvas.getContext("2d");
-            this.init();
             this.backupBuffer = new backup_buffer_1.default(backCapacity);
+            this.init();
+            this.backup();
+            console.log("finished init drawer! ");
         }
         init() {
             const that = this;
@@ -64,6 +69,31 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
                 let force = a.force;
                 return { x, y, force };
             }
+            this.canvas.addEventListener("mouseenter", function (e) {
+                if (e.buttons == 1) {
+                    that.start(e.offsetX, e.offsetY, 0.5);
+                }
+            });
+            this.canvas.addEventListener("mousedown", function (e) {
+                if (e.buttons == 1) {
+                    that.start(e.offsetX, e.offsetY, 0.5);
+                }
+            });
+            this.canvas.addEventListener("mouseup", function (e) {
+                that.end(e.offsetX, e.offsetY, 0.5);
+            });
+            this.canvas.addEventListener("mouseleave", function (e) {
+                if (e.buttons == 1) {
+                    that.cancelOnce = true;
+                    that.end(e.offsetX, e.offsetY, 0.5);
+                }
+            });
+            this.canvas.addEventListener("mousemove", function (e) {
+                if (e.buttons == 1) {
+                    e.preventDefault();
+                    that.move(e.offsetX, e.offsetY, 0.5);
+                }
+            });
             this.canvas.addEventListener("touchstart", function (e) {
                 let i = info(e);
                 that.start(i.x, i.y, i.force);
@@ -76,6 +106,10 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
                 e.preventDefault();
                 let i = info(e);
                 that.move(i.x, i.y, i.force);
+            }, false);
+            this.canvas.addEventListener("touchcancel", function (e) {
+                let i = info(e);
+                that.end(i.x, i.y, i.force);
             }, false);
         }
         setType(type) {
@@ -94,7 +128,6 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
         }
         redo() {
             if (this.backupBuffer.canRedo()) {
-                console.log("redo");
                 this.context.putImageData(this.backupBuffer.redo(), 0, 0);
             }
         }
@@ -115,6 +148,11 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
             this.backup();
         }
         draw(sx, sy, ex, ey, force) {
+            if (this.cancelOnce) {
+                // 取消一次绘制
+                this.cancelOnce = false;
+                return;
+            }
             if (this.type == "brush") {
                 return new Promise(() => {
                     this.context.beginPath();
@@ -159,6 +197,7 @@ define("index", ["require", "exports", "drawer"], function (require, exports, dr
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     drawer_1 = __importDefault(drawer_1);
+    console.log("init index...");
     const $ = (selector) => {
         return document.querySelector(selector);
     };
@@ -179,4 +218,5 @@ define("index", ["require", "exports", "drawer"], function (require, exports, dr
     $("#btn_redo").addEventListener("click", function () {
         drawer.redo();
     });
+    console.log("finish init index! ");
 });

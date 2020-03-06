@@ -3,16 +3,22 @@ import BackupBuffer from "./backup.buffer";
 export default class Drawer {
     private x = 0;
     private y = 0;
-    private backupBuffer:BackupBuffer<ImageData>;
+    private cancelOnce = false;
+    private backupBuffer: BackupBuffer<ImageData>;
     private canvas: HTMLCanvasElement;
     private context: CanvasRenderingContext2D;
     private type: "brush" | "eraser";
 
-    public constructor(canvas: HTMLCanvasElement, backCapacity = 100) {
+    public constructor(canvas: HTMLCanvasElement, type: "brush" | "eraser" = "brush", backCapacity = 100) {
         this.canvas = canvas;
+        this.type = type;
         this.context = canvas.getContext("2d");
-        this.init();
         this.backupBuffer = new BackupBuffer<ImageData>(backCapacity);
+
+        this.init();
+        this.backup();
+
+        console.log("finished init drawer! ");
     }
 
     private init() {
@@ -27,22 +33,55 @@ export default class Drawer {
             return { x, y, force };
         }
 
+        this.canvas.addEventListener("mouseenter", function (e) {
+            if (e.buttons == 1) {
+                that.start(e.offsetX, e.offsetY, 0.5);
+            }
+        });
+        this.canvas.addEventListener("mousedown", function (e) {
+            if (e.buttons == 1) {
+                that.start(e.offsetX, e.offsetY, 0.5);
+            }
+        });
+        this.canvas.addEventListener("mouseup", function (e) {
+            that.end(e.offsetX, e.offsetY, 0.5);
+        });
+        this.canvas.addEventListener("mouseleave", function (e) {
+            if (e.buttons == 1) {
+                that.cancelOnce = true;
+                that.end(e.offsetX, e.offsetY, 0.5);
+            }
+        });
+        this.canvas.addEventListener("mousemove", function (e) {
+            if (e.buttons == 1) {
+                e.preventDefault();
+                that.move(e.offsetX, e.offsetY, 0.5);
+            }
+        });
+
+
         this.canvas.addEventListener("touchstart", function (e) {
             let i = info(e);
             that.start(i.x, i.y, i.force);
         }, false);
+
         this.canvas.addEventListener("touchend", function (e) {
             let i = info(e);
             that.end(i.x, i.y, i.force);
         }, false);
+
         this.canvas.addEventListener("touchmove", function (e) {
             e.preventDefault();
             let i = info(e);
             that.move(i.x, i.y, i.force);
         }, false);
+        this.canvas.addEventListener("touchcancel", function (e) {
+            let i = info(e);
+            that.end(i.x, i.y, i.force);
+        }, false);
     }
 
-    public setType(type: "brush" | "eraser"){
+    public setType(type: "brush" | "eraser") {
         this.type = type;
     }
 
@@ -62,7 +101,6 @@ export default class Drawer {
 
     public redo() {
         if (this.backupBuffer.canRedo()) {
-            console.log("redo");
             this.context.putImageData(this.backupBuffer.redo(), 0, 0);
         }
     }
@@ -85,6 +123,12 @@ export default class Drawer {
         this.backup();
     }
     private draw(sx: number, sy: number, ex: number, ey: number, force: number) {
+        if (this.cancelOnce) {
+            // 取消一次绘制
+            this.cancelOnce = false;
+            return;
+        }
+
         if (this.type == "brush") {
             return new Promise(() => {
                 this.context.beginPath();
