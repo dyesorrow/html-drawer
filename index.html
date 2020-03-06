@@ -53,64 +53,11 @@
         <div id="btn_redo" class="btn_style">前进</div>
     </div>
 
-
-
-    <script src="./draw.js"></script>
-    <script>
-        var $ = (selector) => {
-            return document.querySelector(selector);
-        };
-
-        var canvas = $("#canvas");
-        var drawer = Drawer.new(canvas, "brush");
-
-        function info(e) {
-            const touches = e.changedTouches;
-            let a = touches[0];
-            let x = a.clientX - canvas.offsetLeft;
-            let y = a.clientY - canvas.offsetTop;
-            let force = a.force;
-            return {
-                x,
-                y,
-                force
-            };
-        }
-        var touched = false;
-        canvas.addEventListener("touchstart", function(e) {
-            let i = info(e);
-            drawer.start(i.x, i.y, i.force);
-            touched = true;
-        }, false);
-        canvas.addEventListener("touchend", function(e) {
-            let i = info(e);
-            drawer.end(i.x, i.y, i.force);
-            touched = false;
-        }, false)
-        canvas.addEventListener("touchmove", function(e) {
-            e.preventDefault();
-            if (touched) {
-                let i = info(e);
-                drawer.move(i.x, i.y, i.force);
-            }
-        }, false)
-        $("#btn_brush").addEventListener("click", function() {
-            $("#btn_brush").setAttribute("class", "btn_style selected");
-            $("#btn_eraser").setAttribute("class", "btn_style");
-            drawer.type = "brush";
-        });
-        $("#btn_eraser").addEventListener("click", function() {
-            $("#btn_brush").setAttribute("class", "btn_style");
-            $("#btn_eraser").setAttribute("class", "btn_style selected");
-            drawer.type = "eraser";
-        });
-        $("#btn_undo").addEventListener("click", function() {
-            drawer.undo();
-        });
-        $("#btn_redo").addEventListener("click", function() {
-            drawer.redo();
-        });
-    </script>
+    <script src="./libs/require.js"></script>
+    <source src="./dist/index.js" type="">
+    <!-- <script>
+        require(["dist/index"]);
+    </script> -->
 </body>
 
 </html>
