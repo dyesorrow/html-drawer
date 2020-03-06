@@ -1,5 +1,8 @@
 import BackupBuffer from "./backup.buffer";
 
+type DrawTool = "mouse" | "finger" | "pen";
+type DrawType = "brush" | "eraser";
+
 export default class Drawer {
     private x = 0;
     private y = 0;
@@ -7,11 +10,17 @@ export default class Drawer {
     private backupBuffer: BackupBuffer<ImageData>;
     private canvas: HTMLCanvasElement;
     private context: CanvasRenderingContext2D;
-    private type: "brush" | "eraser";
+    
+    public  type: DrawType;
+    public  enableTool: DrawTool[];
+    public  penWidth = 4;
+    public  eraserWidth = 10;
+    public  color = "#FF5733";
 
-    public constructor(canvas: HTMLCanvasElement, type: "brush" | "eraser" = "brush", backCapacity = 100) {
+    public constructor(canvas: HTMLCanvasElement, type: DrawType = "brush", enableTool: DrawTool[] = ["finger", "mouse", "pen"], backCapacity = 100) {
         this.canvas = canvas;
         this.type = type;
+        this.enableTool = enableTool;
         this.context = canvas.getContext("2d");
         this.backupBuffer = new BackupBuffer<ImageData>(backCapacity);
 
@@ -24,65 +33,99 @@ export default class Drawer {
     private init() {
         const that = this;
 
+        // 获取touch的基本信息
         function info(e: TouchEvent) {
             const touches = e.changedTouches;
             let a = touches[0];
             let x = a.clientX - that.canvas.offsetLeft;
             let y = a.clientY - that.canvas.offsetTop;
             let force = a.force;
-            return { x, y, force };
+            // 暂时没有较好api支持区分触控笔和手指， 临时方案可以将 radiusX,radiusY < 1 认为是触控笔，其余认为是 手指绘制
+            let touchType: "finger" | "pen" = a.radiusX < 1 && a.radiusY < 1 ? "pen" : "finger";
+
+            // 判断是否可以绘制
+            let isFinger = that.enableTool.indexOf("finger") >= 0 && touchType == "finger";
+            let isPen = that.enableTool.indexOf("pen") >= 0 && touchType == "pen";
+            return { x, y, force, toDraw: isFinger || isPen };
         }
 
-        this.canvas.addEventListener("mouseenter", function (e) {
-            if (e.buttons == 1) {
-                that.start(e.offsetX, e.offsetY, 0.5);
-            }
-        });
-        this.canvas.addEventListener("mousedown", function (e) {
-            if (e.buttons == 1) {
-                that.start(e.offsetX, e.offsetY, 0.5);
-            }
-        });
-        this.canvas.addEventListener("mouseup", function (e) {
-            that.end(e.offsetX, e.offsetY, 0.5);
-        });
-        this.canvas.addEventListener("mouseleave", function (e) {
-            if (e.buttons == 1) {
-                that.cancelOnce = true;
+        const listener = {
+            mouseenter: function (e: MouseEvent) {
+                if (that.enableTool.indexOf("mouse") < 0) {
+                    return;
+                }
+                if (e.buttons == 1) {
+                    that.start(e.offsetX, e.offsetY, 0.5);
+                }
+            },
+            mousedown: function (e: MouseEvent) {
+                if (that.enableTool.indexOf("mouse") < 0) {
+                    return;
+                }
+                if (e.buttons == 1) {
+                    that.start(e.offsetX, e.offsetY, 0.5);
+                }
+            },
+            mouseup: function (e: MouseEvent) {
+                if (that.enableTool.indexOf("mouse") < 0) {
+                    return;
+                }
                 that.end(e.offsetX, e.offsetY, 0.5);
+            },
+            mouseleave: function (e: MouseEvent) {
+                if (that.enableTool.indexOf("mouse") < 0) {
+                    return;
+                }
+                if (e.buttons == 1) {
+                    that.cancelOnce = true;
+                    that.end(e.offsetX, e.offsetY, 0.5);
+                }
+            },
+            mousemove: function (e: MouseEvent) {
+                if (that.enableTool.indexOf("mouse") < 0) {
+                    return;
+                }
+                if (e.buttons == 1) {
+                    e.preventDefault();
+                    that.move(e.offsetX, e.offsetY, 0.5);
+                }
+            },
+            touchstart: function (e: TouchEvent) {
+                let i = info(e);
+                if (i.toDraw) {
+                    that.start(i.x, i.y, i.force);
+                }
+            },
+            touchend: function (e: TouchEvent) {
+                let i = info(e);
+                if (i.toDraw) {
+                    that.end(i.x, i.y, i.force);
+                }
+            },
+            touchmove: function (e: TouchEvent) {
+                let i = info(e);
+                if (i.toDraw) {
+                    e.preventDefault();
+                    that.move(i.x, i.y, i.force);
+                }
+            },
+            touchcancel: function (e: TouchEvent) {
+                let i = info(e);
+                if (i.toDraw) {
+                    that.end(i.x, i.y, i.force);
+                }
             }
-        });
-        this.canvas.addEventListener("mousemove", function (e) {
-            if (e.buttons == 1) {
-                e.preventDefault();
-                that.move(e.offsetX, e.offsetY, 0.5);
-            }
-        });
+        };
 
-
-        this.canvas.addEventListener("touchstart", function (e) {
-            let i = info(e);
-            that.start(i.x, i.y, i.force);
-        }, false);
-
-        this.canvas.addEventListener("touchend", function (e) {
-            let i = info(e);
-            that.end(i.x, i.y, i.force);
-        }, false);
-
-        this.canvas.addEventListener("touchmove", function (e) {
-            e.preventDefault();
-            let i = info(e);
-            that.move(i.x, i.y, i.force);
-        }, false);
-        this.canvas.addEventListener("touchcancel", function (e) {
-            let i = info(e);
-            that.end(i.x, i.y, i.force);
-        }, false);
-    }
-
-    public setType(type: "brush" | "eraser") {
-        this.type = type;
+        this.canvas.addEventListener("mouseenter", listener.mouseenter);
+        this.canvas.addEventListener("mousedown", listener.mousedown);
+        this.canvas.addEventListener("mouseup", listener.mouseup);
+        this.canvas.addEventListener("mouseleave", listener.mouseleave);
+        this.canvas.addEventListener("mousemove", listener.mousemove);
+        this.canvas.addEventListener("touchstart", listener.touchstart, false);
+        this.canvas.addEventListener("touchend", listener.touchend, false);
+        this.canvas.addEventListener("touchmove", listener.touchmove, false);
+        this.canvas.addEventListener("touchcancel", listener.touchcancel, false);
     }
 
     public canUndo() {
@@ -132,9 +175,9 @@ export default class Drawer {
         if (this.type == "brush") {
             return new Promise(() => {
                 this.context.beginPath();
-                this.context.lineWidth = force * 4;
+                this.context.lineWidth = force * this.penWidth;
                 this.context.lineCap = "round"; // butt(默认)，没有线帽； round半圆形线帽(直径lineWidth)； square矩形线帽，以矩形绘制线段两端的线帽，两侧扩展的宽度各等于线条宽度的一半。
-                this.context.strokeStyle = 'red';
+                this.context.strokeStyle = this.color;
                 this.context.moveTo(sx, sy);
                 this.context.lineTo(ex, ey);
                 this.context.stroke(); // 填充，或者cv.stroke()画线。
@@ -144,7 +187,7 @@ export default class Drawer {
             return new Promise(() => {
                 this.context.save(); // 保存当前环境的状态。
 
-                let redis = force * 10;
+                let redis = force * this.eraserWidth;
                 // 绘制圆帽棒形闭合区域，任意角度
                 this.context.beginPath();
                 let xi = Math.atan((sy - ey) / (sx - ex));
