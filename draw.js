@@ -1,7 +1,7 @@
 // https://www.jianshu.com/p/a84e8b760ed1
 
 var Backuper = {
-    max: 50,
+    max: 100,
     list: [],
     pointer: -1,
     new: function() {
@@ -44,7 +44,7 @@ var Backuper = {
 var Drawer = {
     x: 0,
     y: 0,
-    backuper: Backuper.new(),
+    backupBuffer: Backuper.new(),
     canvas: null,
     context: null,
     type: "brush",
@@ -57,23 +57,23 @@ var Drawer = {
         return obj;
     },
     backup: function() {
-        this.backuper.save(this.context.getImageData(0, 0, this.canvas.width, this.canvas.height));
+        this.backupBuffer.save(this.context.getImageData(0, 0, this.canvas.width, this.canvas.height));
     },
     canUndo: function() {
-        return this.backuper.canUndo();
+        return this.backupBuffer.canUndo();
     },
     canRedo: function() {
-        return this.backuper.canRedo();
+        return this.backupBuffer.canRedo();
     },
     undo: function() {
-        if (this.backuper.canUndo()) {
-            this.context.putImageData(this.backuper.undo(), 0, 0);
+        if (this.backupBuffer.canUndo()) {
+            this.context.putImageData(this.backupBuffer.undo(), 0, 0);
         }
     },
     redo: function() {
-        if (this.backuper.canRedo()) {
+        if (this.backupBuffer.canRedo()) {
             console.log("redo");
-            this.context.putImageData(this.backuper.redo(), 0, 0);
+            this.context.putImageData(this.backupBuffer.redo(), 0, 0);
         }
     },
     start: function(x, y, force) {
