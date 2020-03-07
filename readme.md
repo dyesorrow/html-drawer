@@ -1,7 +1,7 @@
 ## html5绘板工具示例
-支持识别手指和触控笔，其中触控笔支持压感 0-1。支持对多点触控绘制。
+html5绘板工具示例， 无依赖，支持识别手指和触控笔，其中触控笔支持压感 0-1。支持多点触控绘制。
 
-clone 本仓库, 点击 index.html 即可测试
+[点击体验](https://xninemoon.github.io/HtmlDrawer/index.html)
 
 ![](./docs/img/1.gif)
 
