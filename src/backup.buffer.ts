@@ -17,6 +17,13 @@ export default class BackupBuffer<T> {
         this.list.splice(this.pointer, this.list.length - this.pointer, e);
     }
 
+    public top() {
+        if(this.pointer < 0){
+            return null;
+        }
+        return this.list[this.pointer];
+    }
+
     public canUndo() {
         return this.pointer > 0;
     }
