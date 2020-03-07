@@ -53,6 +53,7 @@ export default class Drawer {
             // 判断是否可以绘制
             let isFinger = that.enableTool.indexOf("finger") >= 0 && touchType == "finger";
             let isPen = that.enableTool.indexOf("pen") >= 0 && touchType == "pen";
+            console.log(touches.length);
             return { x, y, force, toDraw: isFinger || isPen };
         }
 
@@ -77,7 +78,6 @@ export default class Drawer {
                 if (that.enableTool.indexOf("mouse") < 0) {
                     return;
                 }
-                console.log("leave");
                 that.end(e.offsetX, e.offsetY, 0.5);
             },
             mouseleave: function (e: MouseEvent) {

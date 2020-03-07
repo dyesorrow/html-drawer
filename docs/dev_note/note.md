@@ -40,3 +40,32 @@ A number representing one or more buttons. For more than one button pressed simu
 8 : 4th button (typically the "Browser Back" button)
 16 : 5th button (typically the "Browser Forward" button)
 ```
+
+
+pointer事件
+https://developer.mozilla.org/zh-CN/docs/Web/API/Pointer_events
+```
+PointerEvent 接口扩展了 MouseEvent 接口，并含有以下属性（这些属性的可写属性全部为只读）。
+
+pointerId - 对于某个由指针引起的事件的唯一标识。
+width - 以CSS像素计数的宽度属性，取决于指针的接触面的几何构成。
+height -  以CSS像素计数的高度属性，取决于指针的接触面的几何构成。
+pressure - 规范化后的指针输入的压力值，取值范围为0到1，0代表硬件可检测到的压力最小值，1代表最大值。
+tiltX - the plane angle (in degrees, in the range of -90 to 90) between the Y-Z plane and the plane containing both the transducer (e.g. pen stylus) axis and the Y axis.
+tiltY - the plane angle (in degrees, in the range of -90 to 90) between the X-Z plane and the plane containing both the transducer (e.g. pen stylus) axis and the X axis.
+pointerType - 表明引发该事件的设备类型（鼠标/笔/触摸等）。
+isPrimary - 表示该指针是否为该类型指针中的首选指针。
+```
+
+Event|On Event Handler|Description
+-|-|-
+pointerover|onpointerover|当定点设备进入某个元素的命中检测 范围时触发。
+pointerenter|onpointerenter|当定点设备进入某个元素或其子元素的命中检测范围时，或做为某一类不支悬停（hover）状态的设备所触发的poinerdown事件的后续事件时所触发。(详情可见 pointerdown事件类型).
+pointerdown|onpointerdown|当某指针得以激活时触发。
+pointermove|onpointermove|当某指针改变其坐标时触发。
+pointerup|onpointerup|当某指针不再活跃时触发。
+pointercancel|onpointercancel|当浏览器认为某指针不会再生成新的后续事件时触发（例如某设备不再活跃）
+pointerout|onpointerout|可能由若干原因触发该事件，包括：定位设备移出了某命中检测的边界；不支持悬浮状态的设备发生pointerup事件（见pointerup事件）； 作为 pointercancel event事件的后续事件（见pointercancel事件）；当数位板检测到数位笔离开了悬浮区域时。
+pointerleave|onpointerleave|当定点设备移出某元素的命中检测边界时触发。对于笔形设备来说，当数位板检测到笔移出了悬浮范围时触发。
+gotpointercapture|ongotpointercapture|当某元素接受到一个指针捕捉时触发。
+lostpointercapture|onlostpointercapture|当针对某个指针的指针捕捉得到释放时触发。

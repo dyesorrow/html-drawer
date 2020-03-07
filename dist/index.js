@@ -19,6 +19,12 @@ define("backup.buffer", ["require", "exports"], function (require, exports) {
             this.pointer++;
             this.list.splice(this.pointer, this.list.length - this.pointer, e);
         }
+        top() {
+            if (this.pointer < 0) {
+                return null;
+            }
+            return this.list[this.pointer];
+        }
         canUndo() {
             return this.pointer > 0;
         }
@@ -50,6 +56,7 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
         constructor(canvas, type = "brush", enableTool = ["finger", "mouse", "pen"], backCapacity = 100) {
             this.x = 0;
             this.y = 0;
+            this.force = 0;
             this.cancelOnce = false;
             this.brushWidth = 4;
             this.eraserWidth = 10;
@@ -62,6 +69,11 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
             this.init();
             this.backup();
             console.log("finished init drawer! ");
+        }
+        resize(width, height) {
+            this.canvas.width = width;
+            this.canvas.height = height;
+            this.context.putImageData(this.backupBuffer.top(), 0, 0);
         }
         init() {
             const that = this;
@@ -77,6 +89,7 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
                 // 判断是否可以绘制
                 let isFinger = that.enableTool.indexOf("finger") >= 0 && touchType == "finger";
                 let isPen = that.enableTool.indexOf("pen") >= 0 && touchType == "pen";
+                console.log(touches.length);
                 return { x, y, force, toDraw: isFinger || isPen };
             }
             const listener = {
@@ -107,8 +120,7 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
                         return;
                     }
                     if (e.buttons == 1) {
-                        that.cancelOnce = true;
-                        that.end(e.offsetX, e.offsetY, 0.5);
+                        that.leave(e.offsetX, e.offsetY, 0.5);
                     }
                 },
                 mousemove: function (e) {
@@ -175,14 +187,21 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
         backup() {
             this.backupBuffer.save(this.context.getImageData(0, 0, this.canvas.width, this.canvas.height));
         }
+        // start or enter
         start(x, y, force) {
             this.x = x;
             this.y = y;
+            this.force = force;
         }
         move(x, y, force) {
             this.draw(this.x, this.y, x, y, force);
             this.x = x;
             this.y = y;
+            this.force = force;
+        }
+        leave(x, y, force) {
+            this.cancelOnce = true;
+            this.end(x, y, force);
         }
         end(x, y, force) {
             this.draw(this.x, this.y, x, y, force);
@@ -194,41 +213,51 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
                 this.cancelOnce = false;
                 return;
             }
+            let that = this;
+            /**
+             * 绘制圆帽棒形闭合区域
+             * @param sx 起始点x
+             * @param sy 起始点y
+             * @param ex 终点x
+             * @param ey 终点y
+             * @param sWidth 起点宽度(圆帽直径)
+             * @param eWidth 终点宽度(圆帽直径)
+             * @param drawInArea 在限制的棒状区域绘制图形
+             */
+            function drawRodShaped(sx, sy, ex, ey, sWidth, eWidth, drawInArea) {
+                that.context.save(); // 保存当前环境的状态。
+                that.context.beginPath();
+                let xi = Math.atan((sy - ey) / (sx - ex));
+                let a = 0.5 * Math.PI + xi;
+                let b = 1.5 * Math.PI + xi;
+                let c = -0.5 * Math.PI + xi;
+                let d = 0.5 * Math.PI + xi;
+                if (sx >= ex) {
+                    that.context.arc(ex, ey, eWidth / 2, a, b);
+                    that.context.arc(sx, sy, sWidth / 2, c, d);
+                }
+                else {
+                    that.context.arc(sx, sy, sWidth / 2, a, b);
+                    that.context.arc(ex, ey, eWidth / 2, c, d);
+                }
+                that.context.closePath();
+                that.context.clip(); // 从原始画布剪切任意形状和尺寸的区域，用于限制绘画区域。
+                drawInArea(that.context); // 在限制区域进行绘画
+                that.context.restore(); //	返回之前保存过的路径状态和属性。
+            }
             if (this.type == "brush") {
-                return new Promise(() => {
-                    this.context.beginPath();
-                    this.context.lineWidth = force * this.brushWidth;
-                    this.context.lineCap = "round"; // butt(默认)，没有线帽； round半圆形线帽(直径lineWidth)； square矩形线帽，以矩形绘制线段两端的线帽，两侧扩展的宽度各等于线条宽度的一半。
-                    this.context.strokeStyle = this.color;
-                    this.context.moveTo(sx, sy);
-                    this.context.lineTo(ex, ey);
-                    this.context.stroke(); // 填充，或者cv.stroke()画线。
+                drawRodShaped(sx, sy, ex, ey, this.force * this.brushWidth, force * this.brushWidth, (ctx) => {
+                    ctx.rect(20, 20, 150, 100);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
                 });
+                return;
             }
             if (this.type == "eraser") {
-                return new Promise(() => {
-                    this.context.save(); // 保存当前环境的状态。
-                    let redis = force * this.eraserWidth;
-                    // 绘制圆帽棒形闭合区域，任意角度
-                    this.context.beginPath();
-                    let xi = Math.atan((sy - ey) / (sx - ex));
-                    let a = 0.5 * Math.PI + xi;
-                    let b = 1.5 * Math.PI + xi;
-                    let c = -0.5 * Math.PI + xi;
-                    let d = 0.5 * Math.PI + xi;
-                    if (sx >= ex) {
-                        this.context.arc(ex, ey, redis, a, b);
-                        this.context.arc(sx, sy, redis, c, d);
-                    }
-                    else {
-                        this.context.arc(sx, sy, redis, a, b);
-                        this.context.arc(ex, ey, redis, c, d);
-                    }
-                    this.context.closePath();
-                    this.context.clip(); // 从原始画布剪切任意形状和尺寸的区域，用于限制绘画区域。
-                    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height); // 清除绘画区域所有的像素
-                    this.context.restore(); //	返回之前保存过的路径状态和属性。
+                drawRodShaped(sx, sy, ex, ey, this.force * this.eraserWidth, force * this.eraserWidth, (ctx) => {
+                    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); // 清除绘画区域所有的像素
                 });
+                return;
             }
         }
     }
