@@ -5,7 +5,6 @@ export default class BackupBuffer<T> {
 
     public constructor(capacity = 100) {
         this.capacity = capacity;
-        console.log("finished init backup buffer! ");
     }
 
     public save(e: T) {

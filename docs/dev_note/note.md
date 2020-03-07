@@ -43,7 +43,8 @@ A number representing one or more buttons. For more than one button pressed simu
 
 
 ## pointer事件
-https://developer.mozilla.org/zh-CN/docs/Web/API/Pointer_events
+文档来源：https://developer.mozilla.org/zh-CN/docs/Web/API/Pointer_events
+
 PointerEvent 接口扩展了 MouseEvent 接口，并含有以下属性（这些属性的可写属性全部为只读）。
 
 pointerId - 对于某个由指针引起的事件的唯一标识。
@@ -75,3 +76,17 @@ pointerout|onpointerout|可能由若干原因触发该事件，包括：定位�
 pointerleave|onpointerleave|当定点设备移出某元素的命中检测边界时触发。对于笔形设备来说，当数位板检测到笔移出了悬浮范围时触发。
 gotpointercapture|ongotpointercapture|当某元素接受到一个指针捕捉时触发。
 lostpointercapture|onlostpointercapture|当针对某个指针的指针捕捉得到释放时触发。
+
+
+确定按钮状态
+对于某些指针设备来说，比如鼠标或者压感笔，设备上可能有一个或多个按钮可以同时或依次序按动。比如在某个按钮释放后立刻按下其他按钮。为了确定这些按钮的按压状态，指针事件使用button与 buttons等MouseEvent接口中的事件 （PointerEvent继承于此）表明相应的状态。下表提供了各类设备的按钮状态与button和buttons属性的属性值对应关系。
+
+设备按钮状态|button|buttons
+-|-|-
+鼠标移动且无按钮被按压|-1|0
+鼠标左键、触摸接触、压感笔接触（无额外按钮被按压）|0|1
+鼠标中键|1|4
+鼠标右键、压感笔接触且笔杆按钮被按压|2|2
+鼠标X1 (back) |3|8
+鼠标X2 (forward)|4|16
+压感笔接触且橡皮擦按钮被按压|5|32

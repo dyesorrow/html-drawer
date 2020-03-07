@@ -1,7 +1,5 @@
 import Drawer from "./drawer";
 
-console.log("init index...");
-
 const $ = (selector: string, each?: (e: Element) => void) => {
     if (each) {
         document.querySelectorAll(selector).forEach(e => {
@@ -18,13 +16,12 @@ $("#btn_brush").addEventListener("click", function () {
     $("#btn_brush").setAttribute("class", "btn_style selected");
     $("#btn_eraser").setAttribute("class", "btn_style");
     drawer.type = "brush";
-    $("#pen_width").innerHTML = drawer.brushWidth + "";
+    $("#pen_width").innerHTML = drawer.width + "";
 });
 $("#btn_eraser").addEventListener("click", function () {
     $("#btn_brush").setAttribute("class", "btn_style");
     $("#btn_eraser").setAttribute("class", "btn_style selected");
     drawer.type = "eraser";
-    $("#pen_width").innerHTML = drawer.eraserWidth + "";
 });
 $("#btn_undo").addEventListener("click", function () {
     drawer.undo();
@@ -34,28 +31,18 @@ $("#btn_redo").addEventListener("click", function () {
 });
 
 $("#btn_a").addEventListener("click", function () {
-    if (drawer.type == "brush" && drawer.brushWidth < 100) {
-        drawer.brushWidth += 4;
-        $("#pen_width").innerHTML = drawer.brushWidth + "";
+    if (drawer.width < 100) {
+        drawer.width += 4;
+        $("#pen_width").innerHTML = drawer.width + "";
     }
-    if (drawer.type == "eraser" && drawer.eraserWidth < 100) {
-        drawer.eraserWidth += 4;
-        $("#pen_width").innerHTML = drawer.eraserWidth + "";
-
-    }
-
 });
 $("#btn_b").addEventListener("click", function () {
-    if (drawer.type == "brush" && drawer.brushWidth > 4) {
-        drawer.brushWidth -= 4;
-        $("#pen_width").innerHTML = drawer.brushWidth + "";
-    }
-    if (drawer.type == "eraser" && drawer.eraserWidth > 4) {
-        drawer.eraserWidth -= 4;
-        $("#pen_width").innerHTML = drawer.eraserWidth + "";
+    if (drawer.width > 4) {
+        drawer.width -= 4;
+        $("#pen_width").innerHTML = drawer.width + "";
     }
 });
-$("#pen_width").innerHTML = drawer.brushWidth + "";
+$("#pen_width").innerHTML = drawer.width + "";
 
 function initColorBtn() {
     $("#btn_red").setAttribute("class", "btn_style");
@@ -82,7 +69,7 @@ initColorBtn();
 $("#btn_red").setAttribute("class", "btn_style color_btn_selected");
 
 
-function remove<T>(list: T[], e: T) {
+function removeAll<T>(list: T[], e: T) {
     let newList: T[] = [];
     for (let index = 0; index < list.length; index++) {
         if (list[index] != e) {
@@ -93,7 +80,6 @@ function remove<T>(list: T[], e: T) {
 }
 $("input", e => {
     e.addEventListener("click", function (this: HTMLInputElement) {
-        console.log();
         if (this.checked) {
             switch (this.value) {
                 case "1":
@@ -115,17 +101,15 @@ $("input", e => {
         } else {
             switch (this.value) {
                 case "1":
-                    drawer.enableTool = remove(drawer.enableTool, "mouse")
+                    drawer.enableTool = removeAll(drawer.enableTool, "mouse")
                     break;
                 case "2":
-                    drawer.enableTool = remove(drawer.enableTool, "touch")
+                    drawer.enableTool = removeAll(drawer.enableTool, "touch")
                     break;
                 case "3":
-                    drawer.enableTool = remove(drawer.enableTool, "pen")
+                    drawer.enableTool = removeAll(drawer.enableTool, "pen")
                     break;
             }
         }
     });
 });
-
-console.log("finish init index! ");

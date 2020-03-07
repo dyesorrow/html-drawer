@@ -3,23 +3,106 @@ import BackupBuffer from "./backup.buffer";
 type DrawTool = "mouse" | "touch" | "pen";
 type DrawType = "brush" | "eraser";
 
+class DrawerPen {
+    private drawer: Drawer;
+
+    public readonly id: number;
+    public type: DrawType;
+    public width: number;
+    public color: string;
+
+    private x: number;
+    private y: number;
+    private pressure: number;
+    private isSkipNextLine: boolean;
+
+    public constructor(start: PointerEvent, drawer: Drawer) {
+        this.drawer = drawer;
+
+        this.id = start.pointerId;
+        this.type = drawer.type;
+        this.width = drawer.width;
+        this.color = drawer.color;
+
+        this.x = start.offsetX;
+        this.y = start.offsetY;
+        this.pressure = start.pressure;
+    }
+
+    private drawRodShaped(x: number, y: number, pressure: number, drawInArea: () => void) {
+        this.drawer.context.save(); // 保存当前环境的状态。
+        const sx = this.x;
+        const sy = this.y;
+        const ex = x;
+        const ey = y;
+        const sWidth = this.pressure * this.width;
+        const eWidth = pressure * this.width;
+
+        this.drawer.context.beginPath();
+        let xi = Math.atan((sy - ey) / (sx - ex));
+        let a = 0.5 * Math.PI + xi;
+        let b = 1.5 * Math.PI + xi;
+        let c = -0.5 * Math.PI + xi;
+        let d = 0.5 * Math.PI + xi;
+        if (sx >= ex) {
+            this.drawer.context.arc(ex, ey, eWidth / 2, a, b);
+            this.drawer.context.arc(sx, sy, sWidth / 2, c, d);
+        } else {
+            this.drawer.context.arc(sx, sy, sWidth / 2, a, b);
+            this.drawer.context.arc(ex, ey, eWidth / 2, c, d);
+        }
+        this.drawer.context.closePath();
+
+        this.drawer.context.clip(); // 从原始画布剪切任意形状和尺寸的区域，用于限制绘画区域。
+        drawInArea(); // 在限制区域进行绘画
+
+        this.drawer.context.restore(); //	返回之前保存过的路径状态和属性。
+    };
+
+    public skipNextLine(){
+        this.isSkipNextLine = true;
+    }
+
+    public draw(to: PointerEvent) {
+        const x = to.offsetX;
+        const y = to.offsetY;
+        const pressure = to.pressure;
+
+        if(!this.isSkipNextLine){
+            switch (this.type) {
+                case "eraser":
+                    this.drawRodShaped(x, y, pressure, () => {
+                        this.drawer.context.clearRect(0, 0, this.drawer.canvas.width, this.drawer.canvas.height); // 清除绘画区域所有的像素
+                    });
+                    break;
+                case "brush":
+                    this.drawRodShaped(x, y, pressure, () => {
+                        this.drawer.context.rect(20, 20, 150, 100);
+                        this.drawer.context.fillStyle = this.color;
+                        this.drawer.context.fill();
+                    });
+                    break;
+            }
+        }else{
+            this.isSkipNextLine = false;
+        }
+
+        this.x = x;
+        this.y = y;
+        this.pressure = pressure;
+    }
+}
+
 export default class Drawer {
     private readonly backupBuffer: BackupBuffer<ImageData>;
-    private readonly canvas: HTMLCanvasElement;
-    private readonly context: CanvasRenderingContext2D;
-
-    private x = 0;
-    private y = 0;
-    private force = 0;
-    private cancelOnce = false;
-
+    public readonly canvas: HTMLCanvasElement;
+    public readonly context: CanvasRenderingContext2D;
+    private readonly pens: DrawerPen[] = [];
 
     public type: DrawType;
     public enableTool: DrawTool[];
-    public brushWidth = 4;
-    public eraserWidth = 10;
+    public width = 4;
     public color = "#FF5733";
-    public isActive = false;
 
     public constructor(canvas: HTMLCanvasElement, type: DrawType = "brush", enableTool: DrawTool[] = ["touch", "mouse", "pen"], backCapacity = 100) {
         this.canvas = canvas;
@@ -30,8 +113,6 @@ export default class Drawer {
 
         this.init();
         this.backup();
-
-        console.log("finished init drawer! ");
     }
 
     public resize(width: number, height: number) {
@@ -40,57 +121,75 @@ export default class Drawer {
         this.context.putImageData(this.backupBuffer.top(), 0, 0);
     }
 
+    public getPen(id: number): DrawerPen {
+        return this.pens.find(e => e.id == id);
+    }
+
+    public removePen(pen: DrawerPen) {
+        this.pens.splice(this.pens.indexOf(pen), 1);
+    }
+
     private init() {
         const that = this;
 
-        function pressed(e: PointerEvent): boolean {
+        function pressed(e: PointerEvent) {
             let isPressed = e.pressure > 0;
             let isFinger = that.enableTool.indexOf("touch") >= 0 && e.pointerType == "touch";
             let isPen = that.enableTool.indexOf("pen") >= 0 && e.pointerType == "pen";
+            let isPenErase = isPen && e.buttons == 32; // 判断是否是笔上的橡皮擦
             let isMouse = that.enableTool.indexOf("mouse") >= 0 && e.pointerType == "mouse";
-            return isPressed && (isFinger || isPen || isMouse);
+            let canDo = isPressed && (isFinger || isPen || isMouse);
+            return { isPressed, isFinger, isPen, isPenErase, isMouse, canDo };
         }
 
         let listener = {
             start(e: PointerEvent) {
-                if (!pressed(e)) {
-                    return;
-                }
                 e.preventDefault();
                 e.stopPropagation();
-                if (that.isActive) {
+                let p = pressed(e);
+                if (!p.canDo) {
+                    return;
+                }
+                if (that.pens.length != 0) {
                     that.backup();
                 }
-                that.isActive = true;
-                that.x = e.offsetX;
-                that.y = e.offsetY;
-                that.force = e.pressure;
+                let pen = new DrawerPen(e, that);
+                pen.type = p.isPenErase ? "eraser" : that.type;  // 确定笔的类型
+                that.pens.push(pen);
             },
             move(e: PointerEvent) {
-                if (!pressed(e) || !that.isActive) {
-                    return;
-                }
                 e.preventDefault();
                 e.stopPropagation();
-                that.draw(that.x, that.y, e.offsetX, e.offsetY, e.pressure);
-                that.x = e.offsetX;
-                that.y = e.offsetY;
-                that.force = e.pressure;
-            },
-            out(e: PointerEvent) {
-                if (!pressed(e)) {
+                const pen = that.getPen(e.pointerId);
+                if (!pressed(e).canDo || !pen) {
                     return;
                 }
-                that.cancelOnce = true;
+                pen.draw(e);
+            },
+            out(e: PointerEvent) {
+                e.preventDefault();
+                if (!pressed(e).canDo) {
+                    return;
+                }
+                that.getPen(e.pointerId).skipNextLine();
             },
             end(e: PointerEvent) {
-                if (that.isActive) {
+                const pen = that.getPen(e.pointerId);
+                if (pen) {
                     that.backup();
-                    that.isActive = false;
+                    that.removePen(pen);
                 }
+            },
+            preventDefault(e: Event) {
+                e.preventDefault();
             }
         }
 
+        // 防止拖动，关闭掉 touch相关的浏览器事件
+        this.canvas.addEventListener("touchstart", listener.preventDefault);
+        this.canvas.addEventListener("touchmove", listener.preventDefault);
+        this.canvas.addEventListener("touchend", listener.preventDefault);
+        this.canvas.addEventListener("touchcancel", listener.preventDefault);
 
         this.canvas.addEventListener("pointerdown", listener.start);
         this.canvas.addEventListener("pointermove", listener.move);
@@ -124,65 +223,5 @@ export default class Drawer {
 
     private backup() {
         this.backupBuffer.save(this.context.getImageData(0, 0, this.canvas.width, this.canvas.height));
-    }
-
-    private draw(sx: number, sy: number, ex: number, ey: number, force: number) {
-        if (this.cancelOnce) {
-            // 取消一次绘制
-            this.cancelOnce = false;
-            return;
-        }
-
-        let that = this;
-
-        /**
-         * 绘制圆帽棒形闭合区域
-         * @param sx 起始点x
-         * @param sy 起始点y
-         * @param ex 终点x
-         * @param ey 终点y
-         * @param sWidth 起点宽度(圆帽直径)
-         * @param eWidth 终点宽度(圆帽直径)
-         * @param drawInArea 在限制的棒状区域绘制图形
-         */
-        function drawRodShaped(sx: number, sy: number, ex: number, ey: number, sWidth: number, eWidth: number, drawInArea: (ctx: CanvasRenderingContext2D) => void) {
-
-            that.context.save(); // 保存当前环境的状态。
-
-            that.context.beginPath();
-            let xi = Math.atan((sy - ey) / (sx - ex));
-            let a = 0.5 * Math.PI + xi;
-            let b = 1.5 * Math.PI + xi;
-            let c = -0.5 * Math.PI + xi;
-            let d = 0.5 * Math.PI + xi;
-            if (sx >= ex) {
-                that.context.arc(ex, ey, eWidth / 2, a, b);
-                that.context.arc(sx, sy, sWidth / 2, c, d);
-            } else {
-                that.context.arc(sx, sy, sWidth / 2, a, b);
-                that.context.arc(ex, ey, eWidth / 2, c, d);
-            }
-            that.context.closePath();
-
-            that.context.clip(); // 从原始画布剪切任意形状和尺寸的区域，用于限制绘画区域。
-            drawInArea(that.context); // 在限制区域进行绘画
-
-            that.context.restore(); //	返回之前保存过的路径状态和属性。
-        }
-
-        if (this.type == "brush") {
-            drawRodShaped(sx, sy, ex, ey, this.force * this.brushWidth, force * this.brushWidth, (ctx) => {
-                ctx.rect(20, 20, 150, 100);
-                ctx.fillStyle = this.color;
-                ctx.fill();
-            });
-            return;
-        }
-        if (this.type == "eraser") {
-            drawRodShaped(sx, sy, ex, ey, this.force * this.eraserWidth, force * this.eraserWidth, (ctx) => {
-                ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); // 清除绘画区域所有的像素
-            });
-            return;
-        }
     }
 }
