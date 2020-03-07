@@ -83,9 +83,9 @@ $("#btn_red").setAttribute("class", "btn_style color_btn_selected");
 
 
 function remove<T>(list: T[], e: T) {
-    let newList:T[] = [];
+    let newList: T[] = [];
     for (let index = 0; index < list.length; index++) {
-        if(list[index] != e){
+        if (list[index] != e) {
             newList.push(list[index]);
         }
     }
@@ -102,8 +102,8 @@ $("input", e => {
                     }
                     break;
                 case "2":
-                    if (drawer.enableTool.indexOf("finger") == -1) {
-                        drawer.enableTool.push("finger")
+                    if (drawer.enableTool.indexOf("touch") == -1) {
+                        drawer.enableTool.push("touch")
                     }
                     break;
                 case "3":
@@ -118,7 +118,7 @@ $("input", e => {
                     drawer.enableTool = remove(drawer.enableTool, "mouse")
                     break;
                 case "2":
-                    drawer.enableTool = remove(drawer.enableTool, "finger")
+                    drawer.enableTool = remove(drawer.enableTool, "touch")
                     break;
                 case "3":
                     drawer.enableTool = remove(drawer.enableTool, "pen")

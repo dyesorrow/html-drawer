@@ -1,24 +1,27 @@
 import BackupBuffer from "./backup.buffer";
 
-type DrawTool = "mouse" | "finger" | "pen";
+type DrawTool = "mouse" | "touch" | "pen";
 type DrawType = "brush" | "eraser";
 
 export default class Drawer {
+    private readonly backupBuffer: BackupBuffer<ImageData>;
+    private readonly canvas: HTMLCanvasElement;
+    private readonly context: CanvasRenderingContext2D;
+
     private x = 0;
     private y = 0;
     private force = 0;
     private cancelOnce = false;
-    private backupBuffer: BackupBuffer<ImageData>;
-    private canvas: HTMLCanvasElement;
-    private context: CanvasRenderingContext2D;
+
 
     public type: DrawType;
     public enableTool: DrawTool[];
     public brushWidth = 4;
     public eraserWidth = 10;
     public color = "#FF5733";
+    public isActive = false;
 
-    public constructor(canvas: HTMLCanvasElement, type: DrawType = "brush", enableTool: DrawTool[] = ["finger", "mouse", "pen"], backCapacity = 100) {
+    public constructor(canvas: HTMLCanvasElement, type: DrawType = "brush", enableTool: DrawTool[] = ["touch", "mouse", "pen"], backCapacity = 100) {
         this.canvas = canvas;
         this.type = type;
         this.enableTool = enableTool;
@@ -40,99 +43,63 @@ export default class Drawer {
     private init() {
         const that = this;
 
-        // 获取touch的基本信息
-        function info(e: TouchEvent) {
-            const touches = e.changedTouches;
-            let a = touches[0];
-            let x = a.clientX - that.canvas.offsetLeft;
-            let y = a.clientY - that.canvas.offsetTop;
-            let force = a.force;
-            // 暂时没有较好api支持区分触控笔和手指， 临时方案可以将 radiusX,radiusY < 1 认为是触控笔，其余认为是 手指绘制
-            let touchType: "finger" | "pen" = a.radiusX < 1 && a.radiusY < 1 ? "pen" : "finger";
-
-            // 判断是否可以绘制
-            let isFinger = that.enableTool.indexOf("finger") >= 0 && touchType == "finger";
-            let isPen = that.enableTool.indexOf("pen") >= 0 && touchType == "pen";
-            console.log(touches.length);
-            return { x, y, force, toDraw: isFinger || isPen };
+        function pressed(e: PointerEvent): boolean {
+            let isPressed = e.pressure > 0;
+            let isFinger = that.enableTool.indexOf("touch") >= 0 && e.pointerType == "touch";
+            let isPen = that.enableTool.indexOf("pen") >= 0 && e.pointerType == "pen";
+            let isMouse = that.enableTool.indexOf("mouse") >= 0 && e.pointerType == "mouse";
+            return isPressed && (isFinger || isPen || isMouse);
         }
 
-        const listener = {
-            mouseenter: function (e: MouseEvent) {
-                if (that.enableTool.indexOf("mouse") < 0) {
+        let listener = {
+            start(e: PointerEvent) {
+                if (!pressed(e)) {
                     return;
                 }
-                if (e.buttons == 1) {
-                    that.start(e.offsetX, e.offsetY, 0.5);
+                e.preventDefault();
+                e.stopPropagation();
+                if (that.isActive) {
+                    that.backup();
                 }
+                that.isActive = true;
+                that.x = e.offsetX;
+                that.y = e.offsetY;
+                that.force = e.pressure;
             },
-            mousedown: function (e: MouseEvent) {
-                if (that.enableTool.indexOf("mouse") < 0) {
+            move(e: PointerEvent) {
+                if (!pressed(e) || !that.isActive) {
                     return;
                 }
-                if (e.buttons == 1) {
-                    that.start(e.offsetX, e.offsetY, 0.5);
-                }
+                e.preventDefault();
+                e.stopPropagation();
+                that.draw(that.x, that.y, e.offsetX, e.offsetY, e.pressure);
+                that.x = e.offsetX;
+                that.y = e.offsetY;
+                that.force = e.pressure;
             },
-            mouseup: function (e: MouseEvent) {
-                if (that.enableTool.indexOf("mouse") < 0) {
+            out(e: PointerEvent) {
+                if (!pressed(e)) {
                     return;
                 }
-                that.end(e.offsetX, e.offsetY, 0.5);
+                that.cancelOnce = true;
             },
-            mouseleave: function (e: MouseEvent) {
-                if (that.enableTool.indexOf("mouse") < 0) {
-                    return;
-                }
-                if (e.buttons == 1) {
-                    that.leave(e.offsetX, e.offsetY, 0.5);
-                }
-            },
-            mousemove: function (e: MouseEvent) {
-                if (that.enableTool.indexOf("mouse") < 0) {
-                    return;
-                }
-                if (e.buttons == 1) {
-                    e.preventDefault();
-                    that.move(e.offsetX, e.offsetY, 0.5);
-                }
-            },
-            touchstart: function (e: TouchEvent) {
-                let i = info(e);
-                if (i.toDraw) {
-                    that.start(i.x, i.y, i.force);
-                }
-            },
-            touchend: function (e: TouchEvent) {
-                let i = info(e);
-                if (i.toDraw) {
-                    that.end(i.x, i.y, i.force);
-                }
-            },
-            touchmove: function (e: TouchEvent) {
-                let i = info(e);
-                if (i.toDraw) {
-                    e.preventDefault();
-                    that.move(i.x, i.y, i.force);
-                }
-            },
-            touchcancel: function (e: TouchEvent) {
-                let i = info(e);
-                if (i.toDraw) {
-                    that.end(i.x, i.y, i.force);
+            end(e: PointerEvent) {
+                if (that.isActive) {
+                    that.backup();
+                    that.isActive = false;
                 }
             }
-        };
+        }
 
-        this.canvas.addEventListener("mouseenter", listener.mouseenter);
-        this.canvas.addEventListener("mousedown", listener.mousedown);
-        this.canvas.addEventListener("mouseup", listener.mouseup);
-        this.canvas.addEventListener("mouseleave", listener.mouseleave);
-        this.canvas.addEventListener("mousemove", listener.mousemove);
-        this.canvas.addEventListener("touchstart", listener.touchstart, false);
-        this.canvas.addEventListener("touchend", listener.touchend, false);
-        this.canvas.addEventListener("touchmove", listener.touchmove, false);
-        this.canvas.addEventListener("touchcancel", listener.touchcancel, false);
+
+        this.canvas.addEventListener("pointerdown", listener.start);
+        this.canvas.addEventListener("pointermove", listener.move);
+        this.canvas.addEventListener("pointerout", listener.out);
+        this.canvas.addEventListener("pointerup", listener.end);
+
+        // 由于up事件未在cavas上执行，在点击其他地方时，自动备份一下
+        document.addEventListener("pointerdown", listener.end);
+        document.addEventListener("pointerup", listener.end);
     }
 
     public canUndo() {
@@ -159,29 +126,6 @@ export default class Drawer {
         this.backupBuffer.save(this.context.getImageData(0, 0, this.canvas.width, this.canvas.height));
     }
 
-    // start or enter
-    private start(x: number, y: number, force: number) {
-        this.x = x;
-        this.y = y;
-        this.force = force;
-    }
-    private move(x: number, y: number, force: number) {
-        this.draw(this.x, this.y, x, y, force);
-        this.x = x;
-        this.y = y;
-        this.force = force;
-    }
-
-    public leave(x: number, y: number, force: number) {
-        this.cancelOnce = true;
-        this.end(x, y, force);
-    }
-
-    private end(x: number, y: number, force: number) {
-        this.draw(this.x, this.y, x, y, force);
-        this.backup();
-    }
-
     private draw(sx: number, sy: number, ex: number, ey: number, force: number) {
         if (this.cancelOnce) {
             // 取消一次绘制
@@ -202,7 +146,7 @@ export default class Drawer {
          * @param drawInArea 在限制的棒状区域绘制图形
          */
         function drawRodShaped(sx: number, sy: number, ex: number, ey: number, sWidth: number, eWidth: number, drawInArea: (ctx: CanvasRenderingContext2D) => void) {
-  
+
             that.context.save(); // 保存当前环境的状态。
 
             that.context.beginPath();

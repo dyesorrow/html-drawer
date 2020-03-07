@@ -53,7 +53,7 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
     Object.defineProperty(exports, "__esModule", { value: true });
     backup_buffer_1 = __importDefault(backup_buffer_1);
     class Drawer {
-        constructor(canvas, type = "brush", enableTool = ["finger", "mouse", "pen"], backCapacity = 100) {
+        constructor(canvas, type = "brush", enableTool = ["touch", "mouse", "pen"], backCapacity = 100) {
             this.x = 0;
             this.y = 0;
             this.force = 0;
@@ -61,6 +61,7 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
             this.brushWidth = 4;
             this.eraserWidth = 10;
             this.color = "#FF5733";
+            this.isActive = false;
             this.canvas = canvas;
             this.type = type;
             this.enableTool = enableTool;
@@ -77,96 +78,59 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
         }
         init() {
             const that = this;
-            // 获取touch的基本信息
-            function info(e) {
-                const touches = e.changedTouches;
-                let a = touches[0];
-                let x = a.clientX - that.canvas.offsetLeft;
-                let y = a.clientY - that.canvas.offsetTop;
-                let force = a.force;
-                // 暂时没有较好api支持区分触控笔和手指， 临时方案可以将 radiusX,radiusY < 1 认为是触控笔，其余认为是 手指绘制
-                let touchType = a.radiusX < 1 && a.radiusY < 1 ? "pen" : "finger";
-                // 判断是否可以绘制
-                let isFinger = that.enableTool.indexOf("finger") >= 0 && touchType == "finger";
-                let isPen = that.enableTool.indexOf("pen") >= 0 && touchType == "pen";
-                console.log(touches.length);
-                return { x, y, force, toDraw: isFinger || isPen };
+            function pressed(e) {
+                let isPressed = e.pressure > 0;
+                let isFinger = that.enableTool.indexOf("touch") >= 0 && e.pointerType == "touch";
+                let isPen = that.enableTool.indexOf("pen") >= 0 && e.pointerType == "pen";
+                let isMouse = that.enableTool.indexOf("mouse") >= 0 && e.pointerType == "mouse";
+                return isPressed && (isFinger || isPen || isMouse);
             }
-            const listener = {
-                mouseenter: function (e) {
-                    if (that.enableTool.indexOf("mouse") < 0) {
+            let listener = {
+                start(e) {
+                    if (!pressed(e)) {
                         return;
                     }
-                    if (e.buttons == 1) {
-                        that.start(e.offsetX, e.offsetY, 0.5);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (that.isActive) {
+                        that.backup();
                     }
+                    that.isActive = true;
+                    that.x = e.offsetX;
+                    that.y = e.offsetY;
+                    that.force = e.pressure;
                 },
-                mousedown: function (e) {
-                    if (that.enableTool.indexOf("mouse") < 0) {
+                move(e) {
+                    if (!pressed(e) || !that.isActive) {
                         return;
                     }
-                    if (e.buttons == 1) {
-                        that.start(e.offsetX, e.offsetY, 0.5);
-                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    that.draw(that.x, that.y, e.offsetX, e.offsetY, e.pressure);
+                    that.x = e.offsetX;
+                    that.y = e.offsetY;
+                    that.force = e.pressure;
                 },
-                mouseup: function (e) {
-                    if (that.enableTool.indexOf("mouse") < 0) {
+                out(e) {
+                    if (!pressed(e)) {
                         return;
                     }
-                    that.end(e.offsetX, e.offsetY, 0.5);
+                    that.cancelOnce = true;
                 },
-                mouseleave: function (e) {
-                    if (that.enableTool.indexOf("mouse") < 0) {
-                        return;
-                    }
-                    if (e.buttons == 1) {
-                        that.leave(e.offsetX, e.offsetY, 0.5);
-                    }
-                },
-                mousemove: function (e) {
-                    if (that.enableTool.indexOf("mouse") < 0) {
-                        return;
-                    }
-                    if (e.buttons == 1) {
-                        e.preventDefault();
-                        that.move(e.offsetX, e.offsetY, 0.5);
-                    }
-                },
-                touchstart: function (e) {
-                    let i = info(e);
-                    if (i.toDraw) {
-                        that.start(i.x, i.y, i.force);
-                    }
-                },
-                touchend: function (e) {
-                    let i = info(e);
-                    if (i.toDraw) {
-                        that.end(i.x, i.y, i.force);
-                    }
-                },
-                touchmove: function (e) {
-                    let i = info(e);
-                    if (i.toDraw) {
-                        e.preventDefault();
-                        that.move(i.x, i.y, i.force);
-                    }
-                },
-                touchcancel: function (e) {
-                    let i = info(e);
-                    if (i.toDraw) {
-                        that.end(i.x, i.y, i.force);
+                end(e) {
+                    if (that.isActive) {
+                        that.backup();
+                        that.isActive = false;
                     }
                 }
             };
-            this.canvas.addEventListener("mouseenter", listener.mouseenter);
-            this.canvas.addEventListener("mousedown", listener.mousedown);
-            this.canvas.addEventListener("mouseup", listener.mouseup);
-            this.canvas.addEventListener("mouseleave", listener.mouseleave);
-            this.canvas.addEventListener("mousemove", listener.mousemove);
-            this.canvas.addEventListener("touchstart", listener.touchstart, false);
-            this.canvas.addEventListener("touchend", listener.touchend, false);
-            this.canvas.addEventListener("touchmove", listener.touchmove, false);
-            this.canvas.addEventListener("touchcancel", listener.touchcancel, false);
+            this.canvas.addEventListener("pointerdown", listener.start);
+            this.canvas.addEventListener("pointermove", listener.move);
+            this.canvas.addEventListener("pointerout", listener.out);
+            this.canvas.addEventListener("pointerup", listener.end);
+            // 由于up事件未在cavas上执行，在点击其他地方时，自动备份一下
+            document.addEventListener("pointerdown", listener.end);
+            document.addEventListener("pointerup", listener.end);
         }
         canUndo() {
             return this.backupBuffer.canUndo();
@@ -186,26 +150,6 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
         }
         backup() {
             this.backupBuffer.save(this.context.getImageData(0, 0, this.canvas.width, this.canvas.height));
-        }
-        // start or enter
-        start(x, y, force) {
-            this.x = x;
-            this.y = y;
-            this.force = force;
-        }
-        move(x, y, force) {
-            this.draw(this.x, this.y, x, y, force);
-            this.x = x;
-            this.y = y;
-            this.force = force;
-        }
-        leave(x, y, force) {
-            this.cancelOnce = true;
-            this.end(x, y, force);
-        }
-        end(x, y, force) {
-            this.draw(this.x, this.y, x, y, force);
-            this.backup();
         }
         draw(sx, sy, ex, ey, force) {
             if (this.cancelOnce) {
@@ -360,8 +304,8 @@ define("index", ["require", "exports", "drawer"], function (require, exports, dr
                         }
                         break;
                     case "2":
-                        if (drawer.enableTool.indexOf("finger") == -1) {
-                            drawer.enableTool.push("finger");
+                        if (drawer.enableTool.indexOf("touch") == -1) {
+                            drawer.enableTool.push("touch");
                         }
                         break;
                     case "3":
@@ -377,7 +321,7 @@ define("index", ["require", "exports", "drawer"], function (require, exports, dr
                         drawer.enableTool = remove(drawer.enableTool, "mouse");
                         break;
                     case "2":
-                        drawer.enableTool = remove(drawer.enableTool, "finger");
+                        drawer.enableTool = remove(drawer.enableTool, "touch");
                         break;
                     case "3":
                         drawer.enableTool = remove(drawer.enableTool, "pen");
