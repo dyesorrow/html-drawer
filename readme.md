@@ -1,7 +1,7 @@
 ## html5绘板工具示例
 html5绘板工具示例， 无依赖。支持识别手指和触控笔；支持识别触控笔支持压感(0-1)；支持多点触控绘制；支持识别surface pen的橡皮擦。
 
-[点击体验](https://xninemoon.github.io/HtmlDrawer/index.html)
+[点击体验](https://xninemoon.github.io/html-drawer/index.html)
 
 ![](./docs/img/1.gif)
 
