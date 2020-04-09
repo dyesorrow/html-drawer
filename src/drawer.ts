@@ -15,6 +15,7 @@ class DrawerPen {
     private y: number;
     private pressure: number;
     private isSkipNextLine: boolean;
+    private disMax = 10;
 
     public constructor(start: PointerEvent, drawer: Drawer) {
         this.drawer = drawer;
@@ -29,14 +30,29 @@ class DrawerPen {
         this.pressure = start.pressure;
     }
 
+    private dis(x1: number, y1: number, x2: number, y2: number, max: number) {
+        return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) > max * max;
+    }
+
     private drawRodShaped(x: number, y: number, pressure: number, drawInArea: () => void) {
         this.drawer.context.save(); // 保存当前环境的状态。
         const sx = this.x;
         const sy = this.y;
         const ex = x;
         const ey = y;
-        const sWidth = this.pressure * this.width;
-        const eWidth = pressure * this.width;
+
+        let sWidth: number;
+        let eWidth: number;
+        // 防止触控笔断点问题
+        if (this.dis(sx, sy, ex, ey, this.disMax)) {
+            // 大于距离限制，则短粗处理
+            sWidth = this.pressure * this.width;
+            eWidth = pressure * this.width;
+        }else{
+            // 小于距离限制，则均粗处理
+            sWidth = this.pressure * this.width;
+            eWidth = sWidth;
+        }
 
         this.drawer.context.beginPath();
         let xi = Math.atan((sy - ey) / (sx - ex));
@@ -59,7 +75,7 @@ class DrawerPen {
         this.drawer.context.restore(); //	返回之前保存过的路径状态和属性。
     };
 
-    public skipNextLine(){
+    public skipNextLine() {
         this.isSkipNextLine = true;
     }
 
@@ -68,7 +84,7 @@ class DrawerPen {
         const y = to.offsetY;
         const pressure = to.pressure;
 
-        if(!this.isSkipNextLine){
+        if (!this.isSkipNextLine) {
             switch (this.type) {
                 case "eraser":
                     this.drawRodShaped(x, y, pressure, () => {
@@ -77,13 +93,13 @@ class DrawerPen {
                     break;
                 case "brush":
                     this.drawRodShaped(x, y, pressure, () => {
-                        this.drawer.context.rect(20, 20, 150, 100);
+                        this.drawer.context.rect(0, 0, this.drawer.canvas.width, this.drawer.canvas.height);
                         this.drawer.context.fillStyle = this.color;
                         this.drawer.context.fill();
                     });
                     break;
             }
-        }else{
+        } else {
             this.isSkipNextLine = false;
         }
 

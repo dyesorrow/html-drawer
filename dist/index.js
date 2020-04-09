@@ -62,14 +62,26 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
             this.y = start.offsetY;
             this.pressure = start.pressure;
         }
+        dis(x1, y1, x2, y2, max) {
+            return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) > max * max;
+        }
         drawRodShaped(x, y, pressure, drawInArea) {
             this.drawer.context.save(); // 保存当前环境的状态。
             const sx = this.x;
             const sy = this.y;
             const ex = x;
             const ey = y;
-            const sWidth = this.pressure * this.width;
-            const eWidth = pressure * this.width;
+            const p = (this.pressure + pressure) / 2;
+            let sWidth;
+            let eWidth;
+            if (this.dis(sx, sy, ex, ey, 10)) {
+                sWidth = this.pressure * this.width;
+                eWidth = pressure * this.width;
+            }
+            else {
+                sWidth = this.pressure * this.width;
+                eWidth = sWidth;
+            }
             this.drawer.context.beginPath();
             let xi = Math.atan((sy - ey) / (sx - ex));
             let a = 0.5 * Math.PI + xi;
@@ -106,7 +118,7 @@ define("drawer", ["require", "exports", "backup.buffer"], function (require, exp
                         break;
                     case "brush":
                         this.drawRodShaped(x, y, pressure, () => {
-                            this.drawer.context.rect(20, 20, 150, 100);
+                            this.drawer.context.rect(0, 0, this.drawer.canvas.width, this.drawer.canvas.height);
                             this.drawer.context.fillStyle = this.color;
                             this.drawer.context.fill();
                         });
